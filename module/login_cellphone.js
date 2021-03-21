@@ -5,10 +5,9 @@ const crypto = require('crypto')
 module.exports = async (query, request) => {
   query.cookie.os = 'pc'
   const data = {
-    phone: process.env.PHONE || query.phone,
+    phone: query.phone,
     countrycode: query.countrycode || '86',
     password:
-      procee.env.MD5_PASSWORD ||
       query.md5_password ||
       crypto.createHash('md5').update(query.password).digest('hex'),
     rememberLogin: 'true',
