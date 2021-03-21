@@ -8,7 +8,7 @@ module.exports = async (query, request) => {
     phone: process.env.PHONE || query.phone,
     countrycode: query.countrycode || '86',
     password:
-      process.env.MD5_PASSWORD ||
+      procee.env.MD5_PASSWORD ||
       query.md5_password ||
       crypto.createHash('md5').update(query.password).digest('hex'),
     rememberLogin: 'true',
