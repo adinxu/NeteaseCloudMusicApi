@@ -220,6 +220,8 @@
 202. 歌单详情动态
 203. 绑定手机
 204. 一起听状态
+205. 用户历史评论
+206. 云盘歌曲信息匹配纠正
 
 ## 安装
 
@@ -258,7 +260,7 @@ $ set HOST=127.0.0.1 && node app.js
 ```
 
 ## Vercel 部署
-v4.0.8 加入了 Vercel 配置文件,可以直接在 Vercel 下部署了,不需要自己的服务器
+v4.0.8 加入了 Vercel 配置文件,可以直接在 Vercel 下部署了,不需要自己的服务器(访问Vercel部署的接口,需要额外加一个realIP参数,如 `/song/url?id=191254&realIP=116.25.146.177`)
 ### 操作方法
 1. fork 此项目
 2. 在 Vercel 官网点击 `New Project`
@@ -370,7 +372,7 @@ $ sudo docker run -d -p 3000:3000 netease-music-api
 存结果的接口 , 可在请求 url 后面加一个时间戳参数使 url 不同 , 例子 :
 `/simi/playlist?id=347230&timestamp=1503019930000` (之所以加入缓存机制是因为项目早期没有缓存机制，很多  issues 都是报 IP高频，请按自己需求改造缓存中间件(app.js)，源码不复杂)
 
-!> 如果是跨域请求 , 请在所有请求带上 `xhrFields: { withCredentials: true }` (axios 为 `withCredentials: true`)否则
+!> 如果是跨域请求 , 请在所有请求带上 `xhrFields: { withCredentials: true }` (axios 为 `withCredentials: true`, Fetch API 为 `fetch(url, { credentials: 'include' })`), 或直接手动传入cookie (参见 `登录`), 否则
 可能会因为没带上 cookie 导致 301, 具体例子可看 `public/test.html`, 访问`http://localhost:3000/test.html`(默认端口的话) 例子使用 jQuery 和 axios 
 
 !> 301 错误基本都是没登录就调用了需要登录的接口,如果登录了还是提示 301, 基本都是缓存把数据缓存起来了,解决方法是加时间戳或者等待 2 分钟或者重启服务重新登录后再调用接口,可自行改造缓存方法
@@ -430,7 +432,7 @@ $ sudo docker run -d -p 3000:3000 netease-music-api
 完成登录后 , 会在浏览器保存一个 Cookies 用作登录凭证 , 大部分 API 都需要用到这个
 Cookies,非跨域情况请求会自动带上 Cookies,跨域情况参考`调用前须知`
 
-v3.30.0后支持手动传入cookie,登录接口返回内容新增 `cookie` 字段,保存到本地后,get请求带上`?cookie=xxx` 或者 post请求body带上 `cookie` 即可,如:`/user/cloud?cookie=xxx` 或者
+v3.30.0后支持手动传入cookie,登录接口返回内容新增 `cookie` 字段,保存到本地后,get请求带上`?cookie=xxx` (先使用 `encodeURIComponent()` 编码 cookie 值) 或者 post请求body带上 `cookie` 即可,如:`/user/cloud?cookie=xxx` 或者
 ```
 {
     ...,
@@ -818,6 +820,22 @@ tags: 歌单标签
 **接口地址 :** `/song/order/update`  
 
 **调用例子 :** `/song/order/update?pid=2039116066&ids=[5268328,1219871]` 
+
+### 获取用户历史评论
+
+说明 : 登录后调用此接口 , 传入用户 id, 可以获取用户历史评论
+
+**必选参数 :** `uid` : 用户 id  
+
+**可选参数 :**   
+
+`limit` : 返回数量 , 默认为 10
+
+`time`: 上一条数据的time,第一页不需要传,默认为0
+
+**接口地址 :** `/user/comment/history`
+
+**调用例子 :** `/user/comment/history?uid=32953014` `/user/comment/history?uid=32953014&limit=1&time=1616217577564`  (需要换成自己的用户id)
 
 ### 获取用户电台
 
@@ -1484,7 +1502,9 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
 **接口地址 :** `/homepage/block/page` 
 
-**可选参数 :** `refresh`: 是否刷新数据,默认为true
+**可选参数 :** `refresh`: 是否刷新数据,默认为false
+
+`cursor`: 上一条数据返回的cursor
 
 
 ### 首页-发现-圆形图标入口列表
@@ -1521,7 +1541,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
 `id` : 资源 id
 
-`tpye`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
+`type`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
 
 ```
 0: 歌曲
@@ -1639,7 +1659,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
 `id` : 资源 id
 
-`tpye`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
+`type`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
 
 ```
 0: 歌曲
@@ -1671,7 +1691,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 **必选参数 :**   
 `id` : 资源 id, 如歌曲 id,mv id  
 
-`tpye`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
+`type`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
 ```
 0: 歌曲
 
@@ -1711,7 +1731,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
 `t` : 是否点赞 ,1 为点赞 ,0 为取消点赞
 
-`tpye`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
+`type`: 数字 , 资源类型 , 对应歌曲 , mv, 专辑 , 歌单 , 电台, 视频对应以下类型
 
 ```
 0: 歌曲
@@ -1791,7 +1811,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
    `t`:1 发送, 2 回复
 
-   `tpye`: 数字,资源类型,对应歌曲,mv,专辑,歌单,电台,视频对应以下类型
+   `type`: 数字,资源类型,对应歌曲,mv,专辑,歌单,电台,视频对应以下类型
 
    ```
    0: 歌曲
@@ -1825,7 +1845,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
    `t`:0 删除
 
-   `tpye`: 数字,资源类型,对应歌曲,mv,专辑,歌单,电台,视频对应以下类型  
+   `type`: 数字,资源类型,对应歌曲,mv,专辑,歌单,电台,视频对应以下类型  
    
 
    ```
@@ -1916,7 +1936,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
 ### 获取歌曲详情
 
-说明 : 调用此接口 , 传入音乐 id(支持多个 id, 用 `,` 隔开), 可获得歌曲详情(注意:歌曲封面现在需要通过专辑内容接口获取)
+说明 : 调用此接口 , 传入音乐 id(支持多个 id, 用 `,` 隔开), 可获得歌曲详情
 
 **必选参数 :** `ids`: 音乐 id, 如 `ids=347230`
 
@@ -1924,8 +1944,7 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 
 **调用例子 :** `/song/detail?ids=347230`,`/song/detail?ids=347230,347231`
 
-返回数据如下图 :
-![获取歌曲详情](https://raw.githubusercontent.com/Binaryify/NeteaseCloudMusicApi/master/static/songDetail.png)
+
 
 ### 获取专辑内容
 
@@ -1936,9 +1955,6 @@ mp3url 不能直接用 , 可通过 `/song/url` 接口传入歌曲 id 获取具�
 **接口地址 :** `/album`
 
 **调用例子 :** `/album?id=32311`
-
-返回数据如下图 :
-![获取专辑内容](https://raw.githubusercontent.com/Binaryify/NeteaseCloudMusicApi/master/static/%E4%B8%93%E8%BE%91.png)
 
 
 ### 专辑动态信息
@@ -2614,6 +2630,20 @@ type : 地区
 **接口地址 :** `/cloud`
 
 **调用例子 :** `/cloud`
+
+### 云盘歌曲信息匹配纠正
+说明 : 登录后调用此接口,可对云盘歌曲信息匹配纠正,如需取消匹配,asid需要传0  
+
+**必选参数 :**   
+`uid`: 用户id   
+
+`sid`: 云盘的歌曲id   
+
+`asid`: 要匹配的歌曲id 
+
+**接口地址 :** `/cloud/match`
+
+**调用例子 :** `/cloud/match?uid=32953014&sid=aaa&asid=bbb` `/cloud/match?uid=32953014&sid=bbb&asid=0`
 
 ### 电台banner
 说明 : 调用此接口,可获取电台banner
